@@ -11,6 +11,34 @@ import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
 
 public class SpaceGame extends JFrame implements KeyListener {
+    private class EnemyShip {
+        int x, y;
+        int width = 40;
+        int height = 40;
+        int speed = 2;
+
+        public EnemyShip(int startX, int startY) {
+            this.x = startX;
+            this.y = startY;
+        }
+
+        public void update(int playerX) {
+            if (x < playerX) x += speed;
+            else if (x > playerX) x -= speed;
+            y += speed;
+        }
+
+        public Rectangle getBounds() {
+            return new Rectangle(x, y, width, height);
+        }
+
+        public void draw(Graphics g) {
+            g.setColor(Color.RED);
+            g.fillRect(x, y, width, height);
+        }
+    }
+
+
     private static final int WIDTH = 500;
     private static final int HEIGHT = 500;
     private static final int PLAYER_WIDTH = 50;
@@ -47,6 +75,8 @@ public class SpaceGame extends JFrame implements KeyListener {
 
     private GameState gameState = GameState.PLAYING;
     private PlayerState playerState = PlayerState.IDLE;
+
+    private List<EnemyShip> enemies = new ArrayList<>();
 
     // Each obstacle has its own state
     private class Obstacle {
@@ -162,6 +192,10 @@ public class SpaceGame extends JFrame implements KeyListener {
             g.fillRect(projectileX, projectileY, PROJECTILE_WIDTH, PROJECTILE_HEIGHT);
         }
 
+        for (EnemyShip enemy : enemies) {
+            enemy.draw(g);
+        }
+
         if (isShieldActive()) {
             g.setColor(new Color(0, 255, 255, 100)); // Semi-transparent cyan
             g.fillOval(playerX, playerY, 60, 60);
@@ -191,18 +225,18 @@ public class SpaceGame extends JFrame implements KeyListener {
             }
         }
 
-            // Draw stars
-            g.setColor(generateRandomColor());
-            //g.setColor(Color.WHITE);
-            for (Point star : stars) {
-                g.fillOval(star.x, star.y, 2, 2);
-            }
+        // Draw stars
+        g.setColor(generateRandomColor());
+        //g.setColor(Color.WHITE);
+        for (Point star : stars) {
+            g.fillOval(star.x, star.y, 2, 2);
+        }
 
-            if (isGameOver) {
-                g.setColor(Color.WHITE);
-                g.setFont(new Font("Arial", Font.BOLD, 24));
-                g.drawString("Game Over!", WIDTH / 2 - 80, HEIGHT / 2);
-            }
+        if (isGameOver) {
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 24));
+            g.drawString("Game Over!", WIDTH / 2 - 80, HEIGHT / 2);
+        }
     }
 
     private void update() {
@@ -216,6 +250,18 @@ public class SpaceGame extends JFrame implements KeyListener {
                         obstacleList.remove(i--);
                     }
                 }
+            }
+
+
+            for (int i = 0; i < enemies.size(); i++) {
+                EnemyShip enemy = enemies.get(i);
+                enemy.update(playerX);
+                if (enemy.y > HEIGHT) enemies.remove(i--);
+            }
+
+            if (Math.random() < 0.01) { // Adjust frequency as needed
+                int enemyX = new Random().nextInt(WIDTH - 40);
+                enemies.add(new EnemyShip(enemyX, 0));
             }
 
             // Generate new obstacles Spawning
@@ -258,8 +304,17 @@ public class SpaceGame extends JFrame implements KeyListener {
                     break;
                 }
             }
-                scoreLabel.setText("Score: " + score);
+
+            for (int i = 0; i < enemies.size(); i++) {
+                EnemyShip enemy = enemies.get(i);
+                if (projectileRect.intersects(enemy.getBounds())) {
+                    enemies.remove(i--);
+                    score += 20;
+                    isProjectileVisible = false;
+                }
             }
+            scoreLabel.setText("Score: " + score);
+        }
     }
 
     private void reset(){
